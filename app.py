@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, redirect
 import mysql.connector
 from config import DB_CONFIG
 
@@ -7,196 +7,289 @@ app = Flask(__name__)
 
 
 def conectar():
-    return mysql.connector.connect(**DB_CONFIG)
+return mysql.connector.connect(**DB_CONFIG)
 
 
 @app.route("/")
 def index():
-    return """
-    <h1>Sistema Biblioteca Escolar</h1>
-    <p>Projeto iniciado com Python, Flask e MySQL.</p>
-    <ul>
-        <li><a href="/alunos">Ver alunos cadastrados</a></li>
-        <li><a href="/professores">Ver professores cadastrados</a></li>
-        <li><a href="/bibliotecarios">Ver bibliotecários cadastrados</a></li>
-        <li><a href="/livros">Ver livros cadastrados</a></li>
-    </ul>
-    """
+return """
+<h1>Sistema Biblioteca Escolar</h1>
+<p>Projeto iniciado com Python, Flask e MySQL.</p>
+<ul>
+<li><a href="/alunos">Ver alunos cadastrados</a></li>
+<li><a href="/alunos/novo">Cadastrar Alunos</a></li>
+<li><a href="/professores">Ver professores cadastrados</a></li>
+<li><a href="/bibliotecarios">Ver bibliotecários cadastrados</a></li>
+<li><a href="/livros">Ver livros cadastrados</a></li>
+</ul>
+"""
 
 
 @app.route("/alunos")
 def listar_alunos():
-    try:
-        conexao = conectar()
-        cursor = conexao.cursor(dictionary=True)
+try:
+conexao = conectar()
+cursor = conexao.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM aluno")
-        alunos = cursor.fetchall()
+cursor.execute("SELECT * FROM aluno")
+alunos = cursor.fetchall()
 
-        cursor.close()
-        conexao.close()
+cursor.close()
+conexao.close()
 
-        html = """
-        <h1>Alunos Cadastrados</h1>
-        <a href="/">Voltar</a>
-        <br><br>
+html = """
+<h1>Alunos Cadastrados</h1>
+<a href="/">Voltar</a>
+<br><br>
 
-        <table border="1" cellpadding="8">
-            <tr>
-                <th>ID</th>
-                <th>Nome</th>
-                <th>Série</th>
-                <th>Turma</th>
-                <th>Telefone</th>
-            </tr>
-        """
+<table border="1" cellpadding="8">
+<tr>
+<th>ID</th>
+<th>Nome</th>
+<th>Série</th>
+<th>Turma</th>
+<th>Telefone</th>
+</tr>
+"""
 
-        for aluno in alunos:
-            html += f"""
-            <tr>
-                <td>{aluno['id_aluno']}</td>
-                <td>{aluno['nome']}</td>
-                <td>{aluno['serie']}</td>
-                <td>{aluno['turma']}</td>
-                <td>{aluno['telefone']}</td>
-            </tr>
-            """
+for aluno in alunos:
+html += f"""
+<tr>
+<td>{aluno['id_aluno']}</td>
+<td>{aluno['nome']}</td>
+<td>{aluno['serie']}</td>
+<td>{aluno['turma']}</td>
+<td>{aluno['telefone']}</td>
+</tr>
+"""
 
-        html += "</table>"
-        return html
+html += "</table>"
+return html
 
-    except Exception as erro:
-        return f"Erro ao listar alunos: {erro}"
+except Exception as erro:
+return f"Erro ao listar alunos: {erro}"
 
+@app.route("/alunos/novo")
+def formulario_aluno():
+return """
+<h1>Cadastrar Alunos</h1>
+
+<form method="POST" action="/alunos/cadastrar">
+<label>Nome: </label></br>
+<input type="text" name="nome" required></br></br>
+
+<label>Série: </label></br>
+<input type="text" name="serie" required></br></br>
+
+<label>Turma: </label></br>
+<input type="text" name="turma" required></br></br>
+
+<label>Telefone: </label></br>
+<input type="text" name="telefone" required></br></br>
+
+<button type="submite">Salvar</button>
+</form>
+<br>
+<a href="/alunos"> Voltar para a lista</a>
+"""
+
+@app.route("/alunos/cadastrar", methods=["POST"])
+def cadastrar_alunos():
+nome = request.form["nome"]
+serie = request.form["serie"]
+turma = request.form["turma"]
+telefone = request.form["telefone"]
+
+conexao = conectar()
+cursor = conexao.cursor()
+
+sql = """
+INSERT INTO aluno(nome, serie, turma, telefone)
+values (%s,%s,%s,%s)
+"""
+
+valores = (nome, serie, turma, telefone)
+
+cursor.execute(sql, valores)
+conexao.commit()
+
+cursor.close()
+conexao.close()
+
+return redirect("/alunos")
 
 @app.route("/professores")
 def listar_professores():
-    try:
-        conexao = conectar()
-        cursor = conexao.cursor(dictionary=True)
+try:
+conexao = conectar()
+cursor = conexao.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM professor")
-        professores = cursor.fetchall()
+cursor.execute("SELECT * FROM professor")
+professores = cursor.fetchall()
 
-        cursor.close()
-        conexao.close()
+cursor.close()
+conexao.close()
 
-        html = """
-        <h1>Professores Cadastrados</h1>
-        <a href="/">Voltar</a>
-        <br><br>
+html = """
+<h1>Professores Cadastrados</h1>
+<a href="/">Voltar</a>
+<br><br>
 
-        <table border="1" cellpadding="8">
-            <tr>
-                <th>ID</th>
-                <th>Nome</th>
-                <th>Telefone</th>
-                <th>E-mail</th>
-            </tr>
-        """
+<table border="1" cellpadding="8">
+<tr>
+<th>ID</th>
+<th>Nome</th>
+<th>Telefone</th>
+<th>E-mail</th>
+</tr>
+"""
 
-        for professor in professores:
-            html += f"""
-            <tr>
-                <td>{professor['id_professor']}</td>
-                <td>{professor['nome']}</td>
-                <td>{professor['telefone']}</td>
-                <td>{professor['email']}</td>
-            </tr>
-            """
+for professor in professores:
+html += f"""
+<tr>
+<td>{professor['id_professor']}</td>
+<td>{professor['nome']}</td>
+<td>{professor['telefone']}</td>
+<td>{professor['email']}</td>
+</tr>
+"""
 
-        html += "</table>"
-        return html
+html += "</table>"
+return html
 
-    except Exception as erro:
-        return f"Erro ao listar professores: {erro}"
+except Exception as erro:
+return f"Erro ao listar professores: {erro}"
 
+@app.route("/professores/novo")
+def formulario_aluno():
+return """
+<h1>Cadastrar Professores</h1>
+
+<form method="POST" action="/professores/cadastrar">
+<label>Nome: </label></br>
+<input type="text" name="nome" required></br></br>
+
+<label>Telefone: </label></br>
+<input type="text" name="telefone" required></br></br>
+
+<label>E-mail: </label></br>
+<input type="text" name="email" required></br></br>
+
+<button type="submite">Salvar</button>
+</form>
+<br>
+<a href="/professores"> Voltar para a lista</a>
+"""
+
+@app.route("/professores/cadastrar", methods=["POST"])
+def cadastrar_alunos():
+nome = request.form["nome"]
+telefone = request.form["telefone"]
+email = request.form["email"]
+
+conexao = conectar()
+cursor = conexao.cursor()
+
+sql = """
+INSERT INTO aluno(nome, telefone, email)
+values (%s,%s,%s)
+"""
+
+valores = (nome, telefone, email)
+
+cursor.execute(sql, valores)
+conexao.commit()
+
+cursor.close()
+conexao.close()
+
+return redirect("/professores")
 
 @app.route("/bibliotecarios")
 def listar_bibliotecarios():
-    try:
-        conexao = conectar()
-        cursor = conexao.cursor(dictionary=True)
+try:
+conexao = conectar()
+cursor = conexao.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM bibliotecario")
-        bibliotecarios = cursor.fetchall()
+cursor.execute("SELECT * FROM bibliotecario")
+bibliotecarios = cursor.fetchall()
 
-        cursor.close()
-        conexao.close()
+cursor.close()
+conexao.close()
 
-        html = """
-        <h1>Bibliotecários Cadastrados</h1>
-        <a href="/">Voltar</a>
-        <br><br>
+html = """
+<h1>Bibliotecários Cadastrados</h1>
+<a href="/">Voltar</a>
+<br><br>
 
-        <table border="1" cellpadding="8">
-            <tr>
-                <th>ID</th>
-                <th>Nome</th>
-                <th>E-mail</th>
-            </tr>
-        """
+<table border="1" cellpadding="8">
+<tr>
+<th>ID</th>
+<th>Nome</th>
+<th>E-mail</th>
+</tr>
+"""
 
-        for biblio in bibliotecarios:
-            html += f"""
-            <tr>
-                <td>{biblio['id_bibliotecario']}</td>
-                <td>{biblio['nome']}</td>
-                <td>{biblio['email']}</td>
-            </tr>
-            """
+for biblio in bibliotecarios:
+html += f"""
+<tr>
+<td>{biblio['id_bibliotecario']}</td>
+<td>{biblio['nome']}</td>
+<td>{biblio['email']}</td>
+</tr>
+"""
 
-        html += "</table>"
-        return html
+html += "</table>"
+return html
 
-    except Exception as erro:
-        return f"Erro ao listar bibliotecários: {erro}"
+except Exception as erro:
+return f"Erro ao listar bibliotecários: {erro}"
 
 
 @app.route("/livros")
 def listar_livros():
-    try:
-        conexao = conectar()
-        cursor = conexao.cursor(dictionary=True)
+try:
+conexao = conectar()
+cursor = conexao.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM livro")
-        livros = cursor.fetchall()
+cursor.execute("SELECT * FROM livro")
+livros = cursor.fetchall()
 
-        cursor.close()
-        conexao.close()
+cursor.close()
+conexao.close()
 
-        html = """
-        <h1>Livros Cadastrados</h1>
-        <a href="/">Voltar</a>
-        <br><br>
+html = """
+<h1>Livros Cadastrados</h1>
+<a href="/">Voltar</a>
+<br><br>
 
-        <table border="1" cellpadding="8">
-            <tr>
-                <th>ID</th>
-                <th>Título</th>
-                <th>Autor</th>
-                <th>Categoria</th>
-                <th>Status</th>
-            </tr>
-        """
+<table border="1" cellpadding="8">
+<tr>
+<th>ID</th>
+<th>Título</th>
+<th>Autor</th>
+<th>Categoria</th>
+<th>Status</th>
+</tr>
+"""
 
-        for livro in livros:
-            html += f"""
-            <tr>
-                <td>{livro['id_livro']}</td>
-                <td>{livro['titulo']}</td>
-                <td>{livro['autor']}</td>
-                <td>{livro['categoria']}</td>
-                <td>{livro['status']}</td>
-            </tr>
-            """
+for livro in livros:
+html += f"""
+<tr>
+<td>{livro['id_livro']}</td>
+<td>{livro['titulo']}</td>
+<td>{livro['autor']}</td>
+<td>{livro['categoria']}</td>
+<td>{livro['status']}</td>
+</tr>
+"""
 
-        html += "</table>"
-        return html
+html += "</table>"
+return html
 
-    except Exception as erro:
-        return f"Erro ao listar livros: {erro}"
+except Exception as erro:
+return f"Erro ao listar livros: {erro}"
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+app.run(debug=True)
