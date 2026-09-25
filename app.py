@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, flash
 import mysql.connector
 from config import DB_CONFIG
 
 
 app = Flask(__name__)
+app.secret_key = "biblioteca_escolar"
 
 
 def conectar():
@@ -71,12 +72,15 @@ def cadastrar_aluno():
         cursor.close()
         conexao.close()
 
-
+        flash("Aluno cadastrado com sucesso!", "sucesso")
         return redirect("/alunos")
 
 
     except Exception as erro:
-        return f"Erro ao cadastrar aluno: {erro}"
+        flash(f"Erro ao cadastrar aluno: {erro}", "erro")
+        return redirect("/alunos")
+
+    
 
 # Rotas para livros
 @app.route("/livros")
@@ -130,16 +134,22 @@ def cadastrar_livro():
         cursor.execute(sql, valores)
         conexao.commit()
 
+        flash("Livro cadastrado com sucesso!", "sucesso")
 
         cursor.close()
         conexao.close()
-
-
+        
+        
         return redirect("/livros")
-
+        
 
     except Exception as erro:
-        return f"Erro ao cadastrar livro: {erro}"
+        
+
+       flash(f"Erro ao cadastrar livro: {erro}", "erro")
+       return redirect("/livros")
+
+
 
 @app.route("/livros/editar/<int:id_livro>")
 def editar_livro(id_livro):
@@ -156,16 +166,18 @@ def editar_livro(id_livro):
 
         livro = cursor.fetchone()
 
-
         cursor.close()
         conexao.close()
+        
 
 
         return render_template("livro_editar.html", livro=livro)
 
 
     except Exception as erro:
-        return f"Erro ao carregar livro: {erro}"
+      flash(f"Erro ao atualizar livro: {erro}", "erro")
+      return redirect("/livros")
+
 
 
 
@@ -186,7 +198,8 @@ def atualizar_livro(id_livro):
         sql = """
             UPDATE livro
             SET titulo = %s,
-                autor = %s,
+              atualizado com sucesso!", "sucesso")
+          autor = %s,
                 categoria = %s,
                 status = %s
             WHERE id_livro = %s
@@ -203,12 +216,15 @@ def atualizar_livro(id_livro):
         cursor.close()
         conexao.close()
 
-
+        flash("Livro atualizado com sucesso!", "sucesso")
+        
         return redirect("/livros")
 
 
     except Exception as erro:
-        return f"Erro ao atualizar livro: {erro}"
+        flash(f"Erro ao atualizar livro: {erro}", "erro")
+        return redirect("/livros")
+
 
 
 
@@ -232,12 +248,14 @@ def excluir_livro(id_livro):
         cursor.close()
         conexao.close()
 
-
+        flash("Livro excluído com sucesso!", "sucesso")
         return redirect("/livros")
 
 
     except Exception as erro:
-        return f"Erro ao excluir livro: {erro}"
+        flash("Não foi possível excluir o livro.", "erro")
+        return redirect("/livros")
+
 
 
 
@@ -663,13 +681,17 @@ def atualizar_aluno(id_aluno):
         cursor.close()
         conexao.close()
 
-
+        flash("Aluno atualizado com sucesso!", "sucesso")
         return redirect("/alunos")
 
 
     except Exception as erro:
-        return f"Erro ao atualizar aluno: {erro}"
+     
+        flash(f"Erro ao atualizar aluno: {erro}", "erro")
+        return redirect("/alunos")
 
+
+        
 
 
 
@@ -693,11 +715,14 @@ def excluir_aluno(id_aluno):
         conexao.close()
 
 
+        flash("Aluno excluído com sucesso!", "sucesso")
         return redirect("/alunos")
 
 
     except Exception as erro:
-        return f"Erro ao excluir aluno: {erro}"
+        flash("Não foi possível excluir o aluno. Verifique se ele possui empréstimos cadastrados.", "erro")
+        return redirect("/alunos")
+
 
 
 if __name__ == "__main__":

@@ -24,12 +24,12 @@
 
     <label>Status:</label>
     <select name="status" required>
-        <option value="Disponível" {% if livro.status == 'Disponível' %}selected{% endif %}>
+        <option value="Disponível" {% if livro.status = 'Disponível' %}selected{% endif %}>
             Disponível
         </option>
 
 
-        <option value="Emprestado" {% if livro.status == 'Emprestado' %}selected{% endif %}>
+        <option value="Emprestado" {% if livro.status ='Emprestado' %}selected{% endif %}>
             Emprestado
         </option>
     </select>
