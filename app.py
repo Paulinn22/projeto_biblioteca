@@ -157,26 +157,26 @@ def editar_livro(id_livro):
         conexao = conectar()
         cursor = conexao.cursor(dictionary=True)
 
-
         cursor.execute(
             "SELECT * FROM livro WHERE id_livro = %s",
             (id_livro,)
         )
 
-
         livro = cursor.fetchone()
 
         cursor.close()
         conexao.close()
-        
 
+        if not livro:
+            flash("Livro não encontrado.", "erro")
+            return redirect("/livros")
 
         return render_template("livro_editar.html", livro=livro)
 
-
     except Exception as erro:
-      flash(f"Erro ao atualizar livro: {erro}", "erro")
-      return redirect("/livros")
+        print("ERRO AO CARREGAR FORMULÁRIO DE EDIÇÃO:", erro)
+        flash(f"Erro ao carregar formulário do livro: {erro}", "erro")
+        return redirect("/livros")
 
 
 
