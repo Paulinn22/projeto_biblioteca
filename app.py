@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, flash
 import mysql.connector
 from config import DB_CONFIG
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -10,20 +11,79 @@ app.secret_key = "biblioteca_escolar"
 def conectar():
     return mysql.connector.connect(**DB_CONFIG)
 
-
 @app.route("/")
 def index():
-    return render_template("index.html")
-
-
-@app.route("/alunos")
-def listar_alunos():
     try:
         conexao = conectar()
         cursor = conexao.cursor(dictionary=True)
 
 
-        cursor.execute("SELECT * FROM aluno")
+        cursor.execute("SELECT COUNT(*) AS total FROM aluno")
+        total_alunos = cursor.fetchone()["total"]
+
+
+        cursor.execute("SELECT COUNT(*) AS total FROM livro")
+        total_livros = cursor.fetchone()["total"]
+
+
+        cursor.execute("SELECT COUNT(*) AS total FROM livro WHERE status = 'Disponível'")
+        total_disponiveis = cursor.fetchone()["total"]
+
+
+        cursor.execute("SELECT COUNT(*) AS total FROM emprestimo WHERE status = 'Emprestado'")
+        total_emprestimos = cursor.fetchone()["total"]
+
+
+        cursor.close()
+        conexao.close()
+
+
+        return render_template(
+            "index.html",
+            total_alunos=total_alunos,
+            total_livros=total_livros,
+            total_disponiveis=total_disponiveis,
+            total_emprestimos=total_emprestimos
+        )
+
+
+    except Exception as erro:
+        flash(f"Erro ao carregar página inicial: {erro}", "erro")
+        return render_template(
+            "index.html",
+            total_alunos=0,
+            total_livros=0,
+            total_disponiveis=0,
+            total_emprestimos=0
+        )
+
+
+@app.route("/alunos")
+def listar_alunos():
+    try:
+        pesquisa = request.args.get("pesquisa", "")
+
+
+        conexao = conectar()
+        cursor = conexao.cursor(dictionary=True)
+
+
+        if pesquisa:
+            sql = """
+                SELECT * FROM aluno
+                WHERE nome LIKE %s
+                   OR serie LIKE %s
+                   OR turma LIKE %s
+                ORDER BY nome
+            """
+
+
+            valor = f"%{pesquisa}%"
+            cursor.execute(sql, (valor, valor, valor))
+        else:
+            cursor.execute("SELECT * FROM aluno ORDER BY nome")
+
+
         alunos = cursor.fetchall()
 
 
@@ -31,17 +91,21 @@ def listar_alunos():
         conexao.close()
 
 
-        return render_template("alunos.html", alunos=alunos)
+        return render_template(
+            "alunos.html",
+            alunos=alunos,
+            pesquisa=pesquisa
+        )
 
 
     except Exception as erro:
-        return f"Erro ao listar alunos: {erro}"
+        flash(f"Erro ao listar alunos: {erro}", "erro")
+        return redirect("/")
 
 
 @app.route("/alunos/novo")
 def formulario_aluno():
     return render_template("aluno_form.html")
-
 
 @app.route("/alunos/cadastrar", methods=["POST"])
 def cadastrar_aluno():
@@ -50,6 +114,15 @@ def cadastrar_aluno():
         serie = request.form["serie"]
         turma = request.form["turma"]
         telefone = request.form["telefone"]
+
+        if len(nome.strip()) < 3:
+            flash("O nome do aluno deve ter pelo menos 3 caracteres.", "erro")
+            return redirect("/alunos/novo")
+
+
+        if telefone and len(telefone.strip()) < 8:
+            flash("O telefone deve ter pelo menos 8 caracteres.", "erro")
+            return redirect("/alunos/novo")
 
 
         conexao = conectar()
@@ -80,17 +153,34 @@ def cadastrar_aluno():
         flash(f"Erro ao cadastrar aluno: {erro}", "erro")
         return redirect("/alunos")
 
-    
-
 # Rotas para livros
 @app.route("/livros")
 def listar_livros():
     try:
+        pesquisa = request.args.get("pesquisa", "")
+
+
         conexao = conectar()
         cursor = conexao.cursor(dictionary=True)
 
 
-        cursor.execute("SELECT * FROM livro")
+        if pesquisa:
+            sql = """
+                SELECT * FROM livro
+                WHERE titulo LIKE %s
+                   OR autor LIKE %s
+                   OR categoria LIKE %s
+                   OR status LIKE %s
+                ORDER BY titulo
+            """
+
+
+            valor = f"%{pesquisa}%"
+            cursor.execute(sql, (valor, valor, valor, valor))
+        else:
+            cursor.execute("SELECT * FROM livro ORDER BY titulo")
+
+
         livros = cursor.fetchall()
 
 
@@ -98,17 +188,22 @@ def listar_livros():
         conexao.close()
 
 
-        return render_template("livros.html", livros=livros)
+        return render_template(
+            "livros.html",
+            livros=livros,
+            pesquisa=pesquisa
+        )
 
 
     except Exception as erro:
-        return f"Erro ao listar livros: {erro}"
+        flash(f"Erro ao listar livros: {erro}", "erro")
+        return redirect("/")
+
 
 
 @app.route("/livros/novo")
 def formulario_livro():
     return render_template("livro_form.html")
-
 
 @app.route("/livros/cadastrar", methods=["POST"])
 def cadastrar_livro():
@@ -116,6 +211,15 @@ def cadastrar_livro():
         titulo = request.form["titulo"]
         autor = request.form["autor"]
         categoria = request.form["categoria"]
+
+        if len(titulo.strip()) < 2:
+            flash("O título do livro deve ter pelo menos 2 caracteres.", "erro")
+            return redirect("/livros/novo")
+
+
+        if len(autor.strip()) < 3:
+            flash("O nome do autor deve ter pelo menos 3 caracteres.", "erro")
+            return redirect("/livros/novo")
 
 
         conexao = conectar()
@@ -149,8 +253,6 @@ def cadastrar_livro():
        flash(f"Erro ao cadastrar livro: {erro}", "erro")
        return redirect("/livros")
 
-
-
 @app.route("/livros/editar/<int:id_livro>")
 def editar_livro(id_livro):
     try:
@@ -178,10 +280,6 @@ def editar_livro(id_livro):
         flash(f"Erro ao carregar formulário do livro: {erro}", "erro")
         return redirect("/livros")
 
-
-
-
-
 @app.route("/livros/atualizar/<int:id_livro>", methods=["POST"])
 def atualizar_livro(id_livro):
     try:
@@ -198,8 +296,7 @@ def atualizar_livro(id_livro):
         sql = """
             UPDATE livro
             SET titulo = %s,
-              atualizado com sucesso!", "sucesso")
-          autor = %s,
+                autor = %s,
                 categoria = %s,
                 status = %s
             WHERE id_livro = %s
@@ -212,11 +309,12 @@ def atualizar_livro(id_livro):
         cursor.execute(sql, valores)
         conexao.commit()
 
+        flash("Livro atualizado com sucesso!", "sucesso")
 
         cursor.close()
         conexao.close()
 
-        flash("Livro atualizado com sucesso!", "sucesso")
+       
         
         return redirect("/livros")
 
@@ -224,10 +322,6 @@ def atualizar_livro(id_livro):
     except Exception as erro:
         flash(f"Erro ao atualizar livro: {erro}", "erro")
         return redirect("/livros")
-
-
-
-
 
 @app.route("/livros/excluir/<int:id_livro>")
 def excluir_livro(id_livro):
@@ -256,9 +350,6 @@ def excluir_livro(id_livro):
         flash("Não foi possível excluir o livro.", "erro")
         return redirect("/livros")
 
-
-
-
 # Rotas para biliotecario
 @app.route("/bibliotecarios")
 def listar_bibliotecarios():
@@ -281,21 +372,24 @@ def listar_bibliotecarios():
     except Exception as erro:
         return f"Erro ao listar bibliotecários: {erro}"
 
-
-
-
 @app.route("/bibliotecarios/novo")
 def formulario_bibliotecario():
     return render_template("bibliotecario_form.html")
-
-
-
 
 @app.route("/bibliotecarios/cadastrar", methods=["POST"])
 def cadastrar_bibliotecario():
     try:
         nome = request.form["nome"]
         email = request.form["email"]
+
+        if len(nome.strip()) < 3:
+            flash("O nome do bibliotecário deve ter pelo menos 3 caracteres.", "erro")
+            return redirect("/bibliotecarios/novo")
+
+
+        if "@" not in email or "." not in email:
+            flash("Informe um e-mail válido.", "erro")
+            return redirect("/bibliotecarios/novo")
 
 
         conexao = conectar()
@@ -318,12 +412,17 @@ def cadastrar_bibliotecario():
         cursor.close()
         conexao.close()
 
+        flash("Bibliotecario cadastrado com sucesso!", "sucesso")
+
 
         return redirect("/bibliotecarios")
 
 
     except Exception as erro:
-        return f"Erro ao cadastrar bibliotecário: {erro}"
+       
+       flash(f"Erro ao cadastrar bibliotecario: {erro}", "erro")
+       return redirect("/alunos")
+
 
 @app.route("/bibliotecarios/editar/<int:id_bibliotecario>")
 def editar_bibliotecario(id_bibliotecario):
@@ -354,9 +453,6 @@ def editar_bibliotecario(id_bibliotecario):
     except Exception as erro:
         return f"Erro ao carregar bibliotecário: {erro}"
 
-
-
-
 @app.route("/bibliotecarios/atualizar/<int:id_bibliotecario>", methods=["POST"])
 def atualizar_bibliotecario(id_bibliotecario):
     try:
@@ -386,14 +482,14 @@ def atualizar_bibliotecario(id_bibliotecario):
         cursor.close()
         conexao.close()
 
+        flash("Bibliotecario atualizado com sucesso!", "sucesso")
 
         return redirect("/bibliotecarios")
 
 
     except Exception as erro:
-        return f"Erro ao atualizar bibliotecário: {erro}"
-
-
+       flash(f"Erro ao atualiar aluno: {erro}", "erro")
+       return redirect("/alunos")
 
 
 @app.route("/bibliotecarios/excluir/<int:id_bibliotecario>")
@@ -415,19 +511,24 @@ def excluir_bibliotecario(id_bibliotecario):
         cursor.close()
         conexao.close()
 
+        flash("Bibliotecario excluído com sucesso!", "sucesso")
 
         return redirect("/bibliotecarios")
 
 
     except Exception as erro:
-        return f"Erro ao excluir bibliotecário: {erro}"
-
+        
+       flash("Não foi possível excluir o bibliotecário. Verifique se ele possui empréstimos cadastrados.", "erro")
+       return redirect("/alunos")
 
 
 # Rotas para empréstimos
-@app.route("/emprestimos")
+app.route("/emprestimos")
 def listar_emprestimos():
     try:
+        status = request.args.get("status", "")
+
+
         conexao = conectar()
         cursor = conexao.cursor(dictionary=True)
 
@@ -446,11 +547,17 @@ def listar_emprestimos():
             INNER JOIN aluno a ON e.id_aluno = a.id_aluno
             INNER JOIN livro l ON e.id_livro = l.id_livro
             INNER JOIN bibliotecario b ON e.id_bibliotecario = b.id_bibliotecario
-            ORDER BY e.id_emprestimo DESC
         """
 
 
-        cursor.execute(sql)
+        if status:
+            sql += " WHERE e.status = %s ORDER BY e.id_emprestimo DESC"
+            cursor.execute(sql, (status,))
+        else:
+            sql += " ORDER BY e.id_emprestimo DESC"
+            cursor.execute(sql)
+
+
         emprestimos = cursor.fetchall()
 
 
@@ -458,13 +565,16 @@ def listar_emprestimos():
         conexao.close()
 
 
-        return render_template("emprestimos.html", emprestimos=emprestimos)
+        return render_template(
+            "emprestimos.html",
+            emprestimos=emprestimos,
+            status=status
+        )
 
 
     except Exception as erro:
-        return f"Erro ao listar empréstimos: {erro}"
-
-
+        flash(f"Erro ao listar empréstimos: {erro}", "erro")
+        return redirect("/")
 
 
 @app.route("/emprestimos/novo")
@@ -501,9 +611,6 @@ def formulario_emprestimo():
     except Exception as erro:
         return f"Erro ao carregar formulário de empréstimo: {erro}"
 
-
-
-
 @app.route("/emprestimos/cadastrar", methods=["POST"])
 def cadastrar_emprestimo():
     try:
@@ -512,10 +619,39 @@ def cadastrar_emprestimo():
         id_bibliotecario = request.form["id_bibliotecario"]
         data_emprestimo = request.form["data_emprestimo"]
         data_prevista_devolucao = request.form["data_prevista_devolucao"]
+        data_emp = datetime.strptime(data_emprestimo, "%Y-%m-%d")
+        data_dev = datetime.strptime(data_prevista_devolucao, "%Y-%m-%d")
+
+
+        if data_dev < data_emp:
+            flash("A data prevista de devolução não pode ser menor que a data do empréstimo.", "erro")
+            return redirect("/emprestimos/novo")
 
 
         conexao = conectar()
         cursor = conexao.cursor()
+
+        cursor.execute(
+            "SELECT status FROM livro WHERE id_livro = %s",
+            (id_livro,)
+        )
+
+
+        livro = cursor.fetchone()
+
+
+        if livro is None:
+            flash("Livro não encontrado.", "erro")
+            cursor.close()
+            conexao.close()
+            return redirect("/emprestimos/novo")
+
+
+        if livro[0] != "Disponível":
+            flash("Este livro não está disponível para empréstimo.", "erro")
+            cursor.close()
+            conexao.close()
+            return redirect("/emprestimos/novo")
 
 
         sql = """
@@ -556,11 +692,13 @@ def cadastrar_emprestimo():
         cursor.close()
         conexao.close()
 
+        flash("Empréstimo registrado com sucesso!", "sucesso")
 
         return redirect("/emprestimos")
 
 
     except Exception as erro:
+        flash("Erro ao registrar livro.", "erro")
         return f"Erro ao cadastrar empréstimo: {erro}"
 
 # Rota para devolução de livro
@@ -611,11 +749,15 @@ def devolver_livro(id_emprestimo):
         cursor.close()
         conexao.close()
 
+        flash("Livro devolvido com sucesso!", "sucesso")
 
         return redirect("/emprestimos")
 
 
     except Exception as erro:
+        flash("Erro ao devolver livro.", "erro")
+
+
         return f"Erro ao devolver livro: {erro}"
 
 ## Rota CRUD aluno
@@ -644,9 +786,6 @@ def editar_aluno(id_aluno):
 
     except Exception as erro:
         return f"Erro ao carregar aluno: {erro}"
-
-
-
 
 @app.route("/alunos/atualizar/<int:id_aluno>", methods=["POST"])
 def atualizar_aluno(id_aluno):
@@ -691,10 +830,6 @@ def atualizar_aluno(id_aluno):
         return redirect("/alunos")
 
 
-        
-
-
-
 @app.route("/alunos/excluir/<int:id_aluno>")
 def excluir_aluno(id_aluno):
     try:
@@ -723,6 +858,50 @@ def excluir_aluno(id_aluno):
         flash("Não foi possível excluir o aluno. Verifique se ele possui empréstimos cadastrados.", "erro")
         return redirect("/alunos")
 
+@app.route("/emprestimos/atrasados")
+def listar_emprestimos_atrasados():
+    try:
+        conexao = conectar()
+        cursor = conexao.cursor(dictionary=True)
+
+
+        sql = """
+            SELECT
+                e.id_emprestimo,
+                a.nome AS aluno,
+                l.titulo AS livro,
+                b.nome AS bibliotecario,
+                e.data_emprestimo,
+                e.data_prevista_devolucao,
+                DATEDIFF(CURDATE(), e.data_prevista_devolucao) AS dias_atraso,
+                e.status
+            FROM emprestimo e
+            INNER JOIN aluno a ON e.id_aluno = a.id_aluno
+            INNER JOIN livro l ON e.id_livro = l.id_livro
+            INNER JOIN bibliotecario b ON e.id_bibliotecario = b.id_bibliotecario
+            WHERE e.status = 'Emprestado'
+              AND e.data_prevista_devolucao < CURDATE()
+            ORDER BY e.data_prevista_devolucao
+        """
+
+
+        cursor.execute(sql)
+        emprestimos = cursor.fetchall()
+
+
+        cursor.close()
+        conexao.close()
+
+
+        return render_template(
+            "emprestimos_atrasados.html",
+            emprestimos=emprestimos
+        )
+
+
+    except Exception as erro:
+        flash(f"Erro ao listar empréstimos atrasados: {erro}", "erro")
+        return redirect("/emprestimos")
 
 
 if __name__ == "__main__":
