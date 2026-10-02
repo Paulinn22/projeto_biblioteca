@@ -1,7 +1,5 @@
 USE biblioteca_3ano;
 
-USE biblioteca_3ano;
-
 
 DELETE FROM emprestimo;
 DELETE FROM aluno;
@@ -9,33 +7,34 @@ DELETE FROM livro;
 DELETE FROM bibliotecario;
 
 
-ALTER TABLE emprestimo AUTO_INCREMENT = 1;  
+ALTER TABLE emprestimo AUTO_INCREMENT = 1;
 ALTER TABLE aluno AUTO_INCREMENT = 1;
 ALTER TABLE livro AUTO_INCREMENT = 1;
 ALTER TABLE bibliotecario AUTO_INCREMENT = 1;
 
 
-INSERT INTO aluno (nome, serie, turma, telefone)
-VALUES
-("Paulo Ricardo", "3ano", "B", "44996743567"),
-    ("Leticia de Brito", "3ano", "B", "44991353675"),
-    ("Joao Pedro", "3ano", "B", "44998764350"),
-    ("Alan Gabriel", "3ano", "B", "44990845332"),
-    ("Geovana de Brito", "2ano", "A", "44998764550");
+
+insert into aluno (nome, serie, turma, telefone) values
+('maria', '3º ano', 'a', '11999991111'),
+('jose', '3º ano', 'a', '11999992222'),
+('daniel', '3º ano', 'b', '11999993333'),
+('melany', '3º ano', 'b', '11999994444');
+
+insert into livro (titulo, autor, categoria, status) values
+('dom casmurro', 'machado de assis', 'literatura brasileira', 'disponível'),
+('o alquimista', 'paulo coelho', 'romance', 'disponível'),
+('1984', 'george orwell', 'ficção científica', 'disponível'),
+('o pequeno príncipe', 'antoine de saint-exupéry', 'infantil', 'disponível');
+
+insert into bibliotecario (nome, email) values
+('ana silva', 'ana.silva@escola.com'),
+('carlos sousa', 'carlos.sousa@escola.com');
+
+UPDATE bibliotecario
+SET id_usuario = 2
+WHERE id_bibliotecario = 1;
 
 
-INSERT INTO livro (titulo, autor, categoria, status)
-VALUES
-("Memórias Póstumas de Brás Cubas ", "Machado de Assis", "Realismo", "0"),
-    ("Grande Sertão", "Guimarães Rosa", "Modernismo", "0"),
-    ("Vidas Secas", "Graciliano Ramos", "Modernismo", "0"),
-    ("Capitães da Areia", "Jorge Amado", "Modernismo", "1"),
-    ("Auto da Compadecida ", "Ariano Suassuna", "Dramaturgia", "1");
-
-INSERT INTO bibliotecario (nome, email)
-VALUES
-("Adelpha de Figueiredo", "adelpha@gmail.com"),
-    ("Edson Nery", "edson@gmail.com"),
-    ("Lélia Gentil", "lelia@gmail.com"),
-    ("Maria Helena", "maria@gmail.com"),
-    ("Ana Maria Moreira", "anamaria@gmail.com");	
+UPDATE aluno
+SET id_usuario = 3
+WHERE id_aluno = 1;

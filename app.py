@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, redirect, flash
+from flask import Flask, render_template, request, redirect, flash, session
+
 import mysql.connector
 from config import DB_CONFIG
 from datetime import datetime
+
 
 
 app = Flask(__name__)
@@ -11,9 +13,15 @@ app.secret_key = "biblioteca_escolar"
 def conectar():
     return mysql.connector.connect(**DB_CONFIG)
 
+
 @app.route("/")
 def index():
     try:
+
+        if "id_usuario" not in session:
+            return redirect("/login")
+
+
         conexao = conectar()
         cursor = conexao.cursor(dictionary=True)
 
@@ -26,7 +34,7 @@ def index():
         total_livros = cursor.fetchone()["total"]
 
 
-        cursor.execute("SELECT COUNT(*) AS total FROM livro WHERE status = 'Disponível'")
+        cursor.execute("SELECT COUNT(*) AS total FROM livro WHERE status = 'disponível'")
         total_disponiveis = cursor.fetchone()["total"]
 
 
@@ -56,6 +64,7 @@ def index():
             total_disponiveis=0,
             total_emprestimos=0
         )
+
 
 
 @app.route("/alunos")
@@ -107,6 +116,7 @@ def listar_alunos():
 def formulario_aluno():
     return render_template("aluno_form.html")
 
+
 @app.route("/alunos/cadastrar", methods=["POST"])
 def cadastrar_aluno():
     try:
@@ -123,7 +133,6 @@ def cadastrar_aluno():
         if telefone and len(telefone.strip()) < 8:
             flash("O telefone deve ter pelo menos 8 caracteres.", "erro")
             return redirect("/alunos/novo")
-
 
         conexao = conectar()
         cursor = conexao.cursor()
@@ -145,13 +154,20 @@ def cadastrar_aluno():
         cursor.close()
         conexao.close()
 
+  #ACRESCENTE A MENSAGEM DE SUCESSO AO CADASTRAR O ALUNO
         flash("Aluno cadastrado com sucesso!", "sucesso")
+
+
         return redirect("/alunos")
 
 
     except Exception as erro:
         flash(f"Erro ao cadastrar aluno: {erro}", "erro")
+        
+
         return redirect("/alunos")
+
+
 
 # Rotas para livros
 @app.route("/livros")
@@ -205,6 +221,7 @@ def listar_livros():
 def formulario_livro():
     return render_template("livro_form.html")
 
+
 @app.route("/livros/cadastrar", methods=["POST"])
 def cadastrar_livro():
     try:
@@ -221,7 +238,6 @@ def cadastrar_livro():
             flash("O nome do autor deve ter pelo menos 3 caracteres.", "erro")
             return redirect("/livros/novo")
 
-
         conexao = conectar()
         cursor = conexao.cursor()
 
@@ -232,125 +248,30 @@ def cadastrar_livro():
         """
 
 
-        valores = (titulo, autor, categoria, "Disponível")
+        valores = (titulo, autor, categoria, "disponível")
 
 
         cursor.execute(sql, valores)
         conexao.commit()
+
+
+        cursor.close()
+        conexao.close()
 
         flash("Livro cadastrado com sucesso!", "sucesso")
 
-        cursor.close()
-        conexao.close()
-        
-        
-        return redirect("/livros")
-        
-
-    except Exception as erro:
-        
-
-       flash(f"Erro ao cadastrar livro: {erro}", "erro")
-       return redirect("/livros")
-
-@app.route("/livros/editar/<int:id_livro>")
-def editar_livro(id_livro):
-    try:
-        conexao = conectar()
-        cursor = conexao.cursor(dictionary=True)
-
-        cursor.execute(
-            "SELECT * FROM livro WHERE id_livro = %s",
-            (id_livro,)
-        )
-
-        livro = cursor.fetchone()
-
-        cursor.close()
-        conexao.close()
-
-        if not livro:
-            flash("Livro não encontrado.", "erro")
-            return redirect("/livros")
-
-        return render_template("livro_editar.html", livro=livro)
-
-    except Exception as erro:
-        print("ERRO AO CARREGAR FORMULÁRIO DE EDIÇÃO:", erro)
-        flash(f"Erro ao carregar formulário do livro: {erro}", "erro")
-        return redirect("/livros")
-
-@app.route("/livros/atualizar/<int:id_livro>", methods=["POST"])
-def atualizar_livro(id_livro):
-    try:
-        titulo = request.form["titulo"]
-        autor = request.form["autor"]
-        categoria = request.form["categoria"]
-        status = request.form["status"]
-
-
-        conexao = conectar()
-        cursor = conexao.cursor()
-
-
-        sql = """
-            UPDATE livro
-            SET titulo = %s,
-                autor = %s,
-                categoria = %s,
-                status = %s
-            WHERE id_livro = %s
-        """
-
-
-        valores = (titulo, autor, categoria, status, id_livro)
-
-
-        cursor.execute(sql, valores)
-        conexao.commit()
-
-        flash("Livro atualizado com sucesso!", "sucesso")
-
-        cursor.close()
-        conexao.close()
-
-       
-        
         return redirect("/livros")
 
 
     except Exception as erro:
-        flash(f"Erro ao atualizar livro: {erro}", "erro")
-        return redirect("/livros")
-
-@app.route("/livros/excluir/<int:id_livro>")
-def excluir_livro(id_livro):
-    try:
-        conexao = conectar()
-        cursor = conexao.cursor()
+         flash(f"Erro ao cadastrar livro: {erro}", "erro")
+         return redirect("/livros")
 
 
-        cursor.execute(
-            "DELETE FROM livro WHERE id_livro = %s",
-            (id_livro,)
-        )
 
 
-        conexao.commit()
 
-
-        cursor.close()
-        conexao.close()
-
-        flash("Livro excluído com sucesso!", "sucesso")
-        return redirect("/livros")
-
-
-    except Exception as erro:
-        flash("Não foi possível excluir o livro.", "erro")
-        return redirect("/livros")
-
-# Rotas para biliotecario
+    # Rotas para biliotecario
 @app.route("/bibliotecarios")
 def listar_bibliotecarios():
     try:
@@ -372,16 +293,22 @@ def listar_bibliotecarios():
     except Exception as erro:
         return f"Erro ao listar bibliotecários: {erro}"
 
+
+
+
 @app.route("/bibliotecarios/novo")
 def formulario_bibliotecario():
     return render_template("bibliotecario_form.html")
+
+
+
 
 @app.route("/bibliotecarios/cadastrar", methods=["POST"])
 def cadastrar_bibliotecario():
     try:
         nome = request.form["nome"]
         email = request.form["email"]
-
+   
         if len(nome.strip()) < 3:
             flash("O nome do bibliotecário deve ter pelo menos 3 caracteres.", "erro")
             return redirect("/bibliotecarios/novo")
@@ -412,118 +339,19 @@ def cadastrar_bibliotecario():
         cursor.close()
         conexao.close()
 
-        flash("Bibliotecario cadastrado com sucesso!", "sucesso")
-
-
-        return redirect("/bibliotecarios")
-
-
-    except Exception as erro:
-       
-       flash(f"Erro ao cadastrar bibliotecario: {erro}", "erro")
-       return redirect("/alunos")
-
-
-@app.route("/bibliotecarios/editar/<int:id_bibliotecario>")
-def editar_bibliotecario(id_bibliotecario):
-    try:
-        conexao = conectar()
-        cursor = conexao.cursor(dictionary=True)
-
-
-        cursor.execute(
-            "SELECT * FROM bibliotecario WHERE id_bibliotecario = %s",
-            (id_bibliotecario,)
-        )
-
-
-        bibliotecario = cursor.fetchone()
-
-
-        cursor.close()
-        conexao.close()
-
-
-        return render_template(
-            "bibliotecario_editar.html",
-            bibliotecario=bibliotecario
-        )
-
-
-    except Exception as erro:
-        return f"Erro ao carregar bibliotecário: {erro}"
-
-@app.route("/bibliotecarios/atualizar/<int:id_bibliotecario>", methods=["POST"])
-def atualizar_bibliotecario(id_bibliotecario):
-    try:
-        nome = request.form["nome"]
-        email = request.form["email"]
-
-
-        conexao = conectar()
-        cursor = conexao.cursor()
-
-
-        sql = """
-            UPDATE bibliotecario
-            SET nome = %s,
-                email = %s
-            WHERE id_bibliotecario = %s
-        """
-
-
-        valores = (nome, email, id_bibliotecario)
-
-
-        cursor.execute(sql, valores)
-        conexao.commit()
-
-
-        cursor.close()
-        conexao.close()
-
-        flash("Bibliotecario atualizado com sucesso!", "sucesso")
+        flash("Bibliotecário cadastrado com sucesso!", "sucesso")
 
         return redirect("/bibliotecarios")
 
 
     except Exception as erro:
-       flash(f"Erro ao atualiar aluno: {erro}", "erro")
-       return redirect("/alunos")
-
-
-@app.route("/bibliotecarios/excluir/<int:id_bibliotecario>")
-def excluir_bibliotecario(id_bibliotecario):
-    try:
-        conexao = conectar()
-        cursor = conexao.cursor()
-
-
-        cursor.execute(
-            "DELETE FROM bibliotecario WHERE id_bibliotecario = %s",
-            (id_bibliotecario,)
-        )
-
-
-        conexao.commit()
-
-
-        cursor.close()
-        conexao.close()
-
-        flash("Bibliotecario excluído com sucesso!", "sucesso")
-
+        flash(f"Erro ao cadastrar bibliotecarios: {erro}", "erro")
         return redirect("/bibliotecarios")
-
-
-    except Exception as erro:
         
-       flash("Não foi possível excluir o bibliotecário. Verifique se ele possui empréstimos cadastrados.", "erro")
-       return redirect("/alunos")
 
 
-# Rotas para empréstimos
-app.route("/emprestimos")
+     # Rotas para empréstimos
+@app.route("/emprestimos")
 def listar_emprestimos():
     try:
         status = request.args.get("status", "")
@@ -577,6 +405,8 @@ def listar_emprestimos():
         return redirect("/")
 
 
+
+
 @app.route("/emprestimos/novo")
 def formulario_emprestimo():
     try:
@@ -588,7 +418,7 @@ def formulario_emprestimo():
         alunos = cursor.fetchall()
 
 
-        cursor.execute("SELECT * FROM livro WHERE status = 'Disponível' ORDER BY titulo")
+        cursor.execute("SELECT * FROM livro WHERE status = 'disponível' ORDER BY titulo")
         livros = cursor.fetchall()
 
 
@@ -610,6 +440,9 @@ def formulario_emprestimo():
 
     except Exception as erro:
         return f"Erro ao carregar formulário de empréstimo: {erro}"
+
+
+
 
 @app.route("/emprestimos/cadastrar", methods=["POST"])
 def cadastrar_emprestimo():
@@ -647,7 +480,7 @@ def cadastrar_emprestimo():
             return redirect("/emprestimos/novo")
 
 
-        if livro[0] != "Disponível":
+        if livro[0] != "disponível":
             flash("Este livro não está disponível para empréstimo.", "erro")
             cursor.close()
             conexao.close()
@@ -693,72 +526,86 @@ def cadastrar_emprestimo():
         conexao.close()
 
         flash("Empréstimo registrado com sucesso!", "sucesso")
-
         return redirect("/emprestimos")
 
 
     except Exception as erro:
-        flash("Erro ao registrar livro.", "erro")
-        return f"Erro ao cadastrar empréstimo: {erro}"
+        flash("Empréstimo registrado com sucesso!", "sucesso")
+        return redirect("/emprestimos")
+    
+    
 
-# Rota para devolução de livro
+
+
 @app.route("/emprestimos/devolver/<int:id_emprestimo>")
 def devolver_livro(id_emprestimo):
-
+    conexao = None
+    cursor = None
 
     try:
         conexao = conectar()
         cursor = conexao.cursor(dictionary=True)
 
-
+        # Procurar o empréstimo
         cursor.execute("""
-            SELECT id_livro
+            SELECT id_livro, status
             FROM emprestimo
             WHERE id_emprestimo = %s
         """, (id_emprestimo,))
 
-
         emprestimo = cursor.fetchone()
 
+        if emprestimo is None:
+            flash("Empréstimo não encontrado.", "erro")
+            return redirect("/emprestimos")
 
-        if emprestimo:
+        # Verificar se já foi devolvido
+        if emprestimo["status"] == "Devolvido":
+            flash("Este livro já foi devolvido.", "erro")
+            return redirect("/emprestimos")
 
+        id_livro = emprestimo["id_livro"]
 
-            id_livro = emprestimo["id_livro"]
+        # Atualizar o empréstimo
+        cursor.execute("""
+            UPDATE emprestimo
+            SET data_devolucao = CURDATE(),
+                status = 'Devolvido'
+            WHERE id_emprestimo = %s
+        """, (id_emprestimo,))
 
+        # Deixar o livro disponível novamente
+        cursor.execute("""
+            UPDATE livro
+            SET status = 'Disponível'
+            WHERE id_livro = %s
+        """, (id_livro,))
 
-            cursor.execute("""
-                UPDATE emprestimo
-                SET
-                    data_devolucao = CURDATE(),
-                    status = 'Devolvido'
-                WHERE id_emprestimo = %s
-            """, (id_emprestimo,))
-
-
-            cursor.execute("""
-                UPDATE livro
-                SET status = 'Disponível'
-                WHERE id_livro = %s
-            """, (id_livro,))
-
-
-            conexao.commit()
-
-
-        cursor.close()
-        conexao.close()
+        conexao.commit()
 
         flash("Livro devolvido com sucesso!", "sucesso")
 
         return redirect("/emprestimos")
 
-
     except Exception as erro:
-        flash("Erro ao devolver livro.", "erro")
 
+        if conexao:
+            conexao.rollback()
 
-        return f"Erro ao devolver livro: {erro}"
+        print("ERRO AO DEVOLVER LIVRO:", erro)
+
+        flash(f"Erro ao devolver livro: {erro}", "erro")
+
+        return redirect("/emprestimos")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
 
 ## Rota CRUD aluno
 @app.route("/alunos/editar/<int:id_aluno>")
@@ -786,6 +633,9 @@ def editar_aluno(id_aluno):
 
     except Exception as erro:
         return f"Erro ao carregar aluno: {erro}"
+
+
+
 
 @app.route("/alunos/atualizar/<int:id_aluno>", methods=["POST"])
 def atualizar_aluno(id_aluno):
@@ -821,13 +671,16 @@ def atualizar_aluno(id_aluno):
         conexao.close()
 
         flash("Aluno atualizado com sucesso!", "sucesso")
+
         return redirect("/alunos")
 
 
     except Exception as erro:
-     
-        flash(f"Erro ao atualizar aluno: {erro}", "erro")
-        return redirect("/alunos")
+         flash(f"Erro ao atualizar aluno: {erro}", "erro")
+         return redirect("/alunos")
+
+        
+
 
 
 @app.route("/alunos/excluir/<int:id_aluno>")
@@ -849,8 +702,9 @@ def excluir_aluno(id_aluno):
         cursor.close()
         conexao.close()
 
-
         flash("Aluno excluído com sucesso!", "sucesso")
+
+
         return redirect("/alunos")
 
 
@@ -858,6 +712,215 @@ def excluir_aluno(id_aluno):
         flash("Não foi possível excluir o aluno. Verifique se ele possui empréstimos cadastrados.", "erro")
         return redirect("/alunos")
 
+        
+    
+## crud livro
+@app.route("/livros/editar/<int:id_livro>")
+def editar_livro(id_livro):
+    try:
+        conexao = conectar()
+        cursor = conexao.cursor(dictionary=True)
+
+
+        cursor.execute(
+            "SELECT * FROM livro WHERE id_livro = %s",
+            (id_livro,)
+        )
+
+
+        livro = cursor.fetchone()
+
+
+        cursor.close()
+        conexao.close()
+
+
+        return render_template("livro_editar.html", livro=livro)
+
+
+    except Exception as erro:
+        return f"Erro ao carregar livro: {erro}"
+
+
+
+
+@app.route("/livros/atualizar/<int:id_livro>", methods=["POST"])
+def atualizar_livro(id_livro):
+    try:
+        titulo = request.form["titulo"]
+        autor = request.form["autor"]
+        categoria = request.form["categoria"]
+        status = request.form["status"]
+
+
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+
+        sql = """
+            UPDATE livro
+            SET titulo = %s,
+                autor = %s,
+                categoria = %s,
+                status = %s
+            WHERE id_livro = %s
+        """
+
+
+        valores = (titulo, autor, categoria, status, id_livro)
+
+
+        cursor.execute(sql, valores)
+        conexao.commit()
+
+
+        cursor.close()
+        conexao.close()
+
+        flash("Livro atualizado com sucesso!", "sucesso")
+
+        return redirect("/livros")
+
+
+    except Exception as erro:
+        flash(f"Erro ao atualizar livro: {erro}", "erro")
+        return redirect("/livros")
+        
+
+
+
+
+@app.route("/livros/excluir/<int:id_livro>")
+def excluir_livro(id_livro):
+    try:
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+
+        cursor.execute(
+            "DELETE FROM livro WHERE id_livro = %s",
+            (id_livro,)
+        )
+
+
+        conexao.commit()
+
+
+        cursor.close()
+        conexao.close()
+
+        flash("Livro excluído com sucesso!", "sucesso")
+        return redirect("/livros")
+
+
+    except Exception as erro:
+        flash("Não foi possível excluir o livro. Verifique se ele possui empréstimos cadastrados.", "erro")
+        return redirect("/livros")
+    
+##crud bibliotecario
+@app.route("/bibliotecarios/editar/<int:id_bibliotecario>")
+def editar_bibliotecario(id_bibliotecario):
+    try:
+        conexao = conectar()
+        cursor = conexao.cursor(dictionary=True)
+
+
+        cursor.execute(
+            "SELECT * FROM bibliotecario WHERE id_bibliotecario = %s",
+            (id_bibliotecario,)
+        )
+
+
+        bibliotecario = cursor.fetchone()
+
+
+        cursor.close()
+        conexao.close()
+
+
+        return render_template(
+            "bibliotecario_editar.html",
+            bibliotecario=bibliotecario
+        )
+
+
+    except Exception as erro:
+        return f"Erro ao carregar bibliotecário: {erro}"
+
+
+
+
+@app.route("/bibliotecarios/atualizar/<int:id_bibliotecario>", methods=["POST"])
+def atualizar_bibliotecario(id_bibliotecario):
+    try:
+        nome = request.form["nome"]
+        email = request.form["email"]
+
+
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+
+        sql = """
+            UPDATE bibliotecario
+            SET nome = %s,
+                email = %s
+            WHERE id_bibliotecario = %s
+        """
+
+
+        valores = (nome, email, id_bibliotecario)
+
+
+        cursor.execute(sql, valores)
+        conexao.commit()
+
+
+        cursor.close()
+        conexao.close()
+
+        flash("Bibliotecário atualizado com sucesso!", "sucesso")
+        return redirect("/bibliotecarios")
+
+
+    except Exception as erro:
+        flash(f"Erro ao atualizar bibliotecarios: {erro}", "erro")
+        return redirect("/bibliotecarios")
+        
+
+
+
+
+@app.route("/bibliotecarios/excluir/<int:id_bibliotecario>")
+def excluir_bibliotecario(id_bibliotecario):
+    try:
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+
+        cursor.execute(
+            "DELETE FROM bibliotecario WHERE id_bibliotecario = %s",
+            (id_bibliotecario,)
+        )
+
+
+        conexao.commit()
+
+
+        cursor.close()
+        conexao.close()
+
+        flash("Bibliotecário excluído com sucesso!", "sucesso")
+
+        return redirect("/bibliotecarios")
+
+
+    except Exception as erro:
+        flash("Não foi possível excluir o bibliotecário. Verifique se ele possui empréstimos cadastrados.", "erro")
+        return redirect("/bibliotecarios")
+
+
+    # Rota Empréstimos atrasados
 @app.route("/emprestimos/atrasados")
 def listar_emprestimos_atrasados():
     try:
@@ -902,9 +965,71 @@ def listar_emprestimos_atrasados():
     except Exception as erro:
         flash(f"Erro ao listar empréstimos atrasados: {erro}", "erro")
         return redirect("/emprestimos")
+    
+    ## Rota de Login
+@app.route("/login")
+def login():
+    return render_template("login.html")
+
+
+
+
+@app.route("/login/autenticar", methods=["POST"])
+def autenticar():
+    email = request.form.get('email')
+    senha = request.form["senha"]
+
+
+    try:
+        conexao = conectar()
+        cursor = conexao.cursor(dictionary=True)
+
+
+        sql = """
+            SELECT *
+            FROM usuario
+            WHERE email = %s
+            AND senha = %s
+            AND status = 'Ativo'
+            
+        """
+
+
+
+        cursor.execute(sql, (email, senha))
+        usuario = cursor.fetchone()
+
+
+        cursor.close()
+        conexao.close()
+
+
+        if usuario:
+            session["id_usuario"] = usuario["id_usuario"]
+            session["nome"] = usuario["nome"]
+            session["perfil"] = usuario["perfil"]
+
+
+            flash("Login realizado com sucesso!", "sucesso")
+            return redirect("/")
+        else:
+            flash("E-mail ou senha inválidos.", "erro")
+            return redirect("/login")
+
+
+    except Exception as erro:
+        flash(f"Erro ao realizar login: {erro}", "erro")
+        return redirect("/login")
+
+
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("Você saiu do sistema.", "sucesso")
+    return redirect("/login")
 
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-

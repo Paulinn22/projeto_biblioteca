@@ -6,6 +6,14 @@
 
 <h2>Empréstimos Cadastrados</h2>
 
+
+<p>
+    {% if session.perfil in ['admin', 'bibliotecario'] %}
+        <a href="/emprestimos/novo">Registrar novo empréstimo</a>
+    {% endif %}
+</p>
+
+
 <form method="GET" action="/emprestimos">
 
 
@@ -37,14 +45,7 @@
 
 
 <br>
-
-
-<p>
-    <a href="/emprestimos/novo">Registrar novo empréstimo</a>
-</p>
-
-
-<table>
+ <table>
     <thead>
         <tr>
             <th>ID</th>
@@ -80,25 +81,15 @@
 
 
             <td>
-
-
-                {% if emprestimo.status == 'Emprestado' %}
-
-
-                <a href="/emprestimos/devolver/{{ emprestimo.id_emprestimo }}">
-                    Devolver
-                </a>
-
-
-                {% else %}
-
-
-                Devolvido
-
-
-                {% endif %}
-
-
+                {% if session.perfil in ['admin', 'bibliotecario'] and emprestimo.status == 'Emprestado' %}
+                    <a href="/emprestimos/devolver/{{ emprestimo.id_emprestimo }}">
+                        Devolver
+                    </a>
+                {% elif emprestimo.status == 'Emprestado' %}
+                    Emprestado
+                 {% else %}
+                    Devolvido
+                 {% endif %}
             </td>
 
 
